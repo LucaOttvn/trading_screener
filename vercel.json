@@ -5,8 +5,16 @@
       "destination": "/api/index.js"
     },
     {
-      "source": "/(.*)",
-      "destination": "/src/$1"
+      "source": "/",
+      "destination": "/src/index.html"
+    },
+    {
+      "source": "/screener.js",
+      "destination": "/src/screener.js"
+    },
+    {
+      "source": "/style.css",
+      "destination": "/src/style.css"
     }
   ]
 }
