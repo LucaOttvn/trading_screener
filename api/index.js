@@ -14,9 +14,8 @@ const SYMBOLS_FILE = join(__dirname, "../src/symbols.json");
 const USE_BODY = false;
 
 const CATEGORIES = {
-  stocks: { label: "Stocks", threshold: 2 },
   forex: { label: "Forex", threshold: 0.05 },
-  indices: { label: "Indices", threshold: 3 },
+  indices: { label: "Indices", threshold: 0.1 },
   "raw-materials": { label: "Raw materials", threshold: 0.1 },
   crypto: { label: "Crypto", threshold: 0.5 },
 };
