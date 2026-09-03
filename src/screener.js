@@ -21,15 +21,15 @@ function formatPercentage(value) {
   });
 }
 
-function renderSymbol(symbol) {
+function renderSymbol(item) {
   return `
     <article class="symbol-row">
       <span class="symbol-name">
-        ${escapeHtml(symbol.symbol)}
+        ${escapeHtml(item.label || item.symbol)}
       </span>
 
       <span class="symbol-range">
-        ${formatPercentage(symbol.range_in_percentage)}%
+        ${formatPercentage(item.range_in_percentage)}%
       </span>
     </article>
   `;
@@ -53,23 +53,13 @@ function renderCategory(categoryKey, category) {
           </span>
         </div>
 
-        <span class="category-count">
-          ${symbols.length}
-        </span>
+        <span class="category-count">${symbols.length}</span>
       </header>
 
       ${
         symbols.length
-          ? `
-            <div class="symbol-list">
-              ${symbols.map(renderSymbol).join("")}
-            </div>
-          `
-          : `
-            <p class="empty">
-              No symbols found.
-            </p>
-          `
+          ? `<div class="symbol-list">${symbols.map(renderSymbol).join("")}</div>`
+          : '<p class="empty">No symbols found.</p>'
       }
     </section>
   `;
@@ -89,7 +79,7 @@ function renderErrors(errors) {
           .map(
             (error) => `
               <li>
-                ${escapeHtml(error.symbol)}:
+                ${escapeHtml(error.label || error.symbol)}:
                 ${escapeHtml(error.message)}
               </li>
             `
@@ -113,22 +103,17 @@ async function loadData() {
     const data = await response.json();
 
     updatedElement.textContent = data.generated_at
-      ? `Generated: ${new Date(data.generated_at).toLocaleString()}`
+      ? `Updated: ${new Date(data.generated_at).toLocaleString()}`
       : "Market data";
 
     categoriesElement.innerHTML = Object.entries(data.categories)
-      .map(([categoryKey, category]) =>
-        renderCategory(categoryKey, category)
-      )
+      .map(([categoryKey, category]) => renderCategory(categoryKey, category))
       .join("");
 
     renderErrors(data.errors);
-
     statusElement.remove();
   } catch (error) {
-    statusElement.textContent =
-      `Could not load market data: ${error.message}`;
-
+    statusElement.textContent = `Could not load market data: ${error.message}`;
     statusElement.style.color = "#9f1239";
     statusElement.style.background = "#fff1f2";
   }
