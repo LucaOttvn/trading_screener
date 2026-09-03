@@ -1,0 +1,152 @@
+:root {
+  font-family: Arial, sans-serif;
+  color: #1f2933;
+  background: #f5f6f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  width: min(900px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+h1 {
+  margin: 0 0 6px;
+  font-size: 1.8rem;
+}
+
+#updated {
+  margin: 0;
+  color: #667085;
+  font-size: 0.9rem;
+}
+
+#status {
+  margin: 0 0 20px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #667085;
+}
+
+.category {
+  margin-bottom: 24px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.category-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.category-threshold {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 0.8rem;
+}
+
+.category-count {
+  min-width: 28px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #edf4ff;
+  color: #2563eb;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.symbol-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.symbol-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  border-bottom: 1px solid #eef0f2;
+}
+
+.symbol-row:last-child {
+  border-bottom: 0;
+}
+
+.symbol-name {
+  font-weight: 700;
+}
+
+.symbol-range {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.empty {
+  margin: 0;
+  padding: 16px;
+  color: #667085;
+}
+
+.errors {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.errors h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.errors ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 640px) {
+  main {
+    width: calc(100% - 24px);
+    padding-top: 20px;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .category {
+    margin-bottom: 16px;
+  }
+
+  .symbol-row,
+  .category-header {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}

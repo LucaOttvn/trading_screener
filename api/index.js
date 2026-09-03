@@ -1,65 +1,39 @@
-import YahooFinance from "yahoo-finance2/src/index.ts";
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import express from "express";
+import YahooFinance from "yahoo-finance2";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
+const app = express();
 const yf = new YahooFinance();
 
-const SYMBOLS_FILE = join(__dirname, "symbols.json");
-const OUTPUT_DIR = join(__dirname, "outputs");
-const OUTPUT_FILE = join(OUTPUT_DIR, "market-ranges.json");
-
+const SYMBOLS_FILE = join(__dirname, "../src/symbols.json");
 const USE_BODY = false;
 
 const CATEGORIES = {
-  stocks: {
-    label: "Stocks",
-    threshold: 2,
-  },
-  forex: {
-    label: "Forex",
-    threshold: 0.05,
-  },
-  indices: {
-    label: "Indices",
-    threshold: 3,
-  },
-  "raw-materials": {
-    label: "Raw materials",
-    threshold: 0.1,
-  },
-  crypto: {
-    label: "Crypto",
-    threshold: 0.5,
-  },
+  stocks: { label: "Stocks", threshold: 2 },
+  forex: { label: "Forex", threshold: 0.05 },
+  indices: { label: "Indices", threshold: 3 },
+  "raw-materials": { label: "Raw materials", threshold: 0.1 },
+  crypto: { label: "Crypto", threshold: 0.5 },
 };
 
 const round = (number, decimals = 3) =>
   Number(number.toFixed(decimals));
 
 function readSymbols() {
-  const fileContent = readFileSync(SYMBOLS_FILE, "utf8");
-  const symbolsByCategory = JSON.parse(fileContent);
+  const rawData = readFileSync(SYMBOLS_FILE, "utf8");
+  const parsedData = JSON.parse(rawData);
 
-  return Object.fromEntries(
-    Object.keys(CATEGORIES).map((category) => {
-      const symbols = symbolsByCategory[category];
-
-      return [
-        category,
-        Array.isArray(symbols) ? symbols : [],
-      ];
-    })
-  );
-}
-
-function createEmptyResults() {
   return Object.fromEntries(
     Object.keys(CATEGORIES).map((category) => [
       category,
-      [],
+      Array.isArray(parsedData[category])
+        ? parsedData[category]
+        : [],
     ])
   );
 }
@@ -74,7 +48,7 @@ async function fetchSymbolData(category, symbol) {
 
   if (
     !last ||
-    !last.close ||
+    last.close == null ||
     last.open == null ||
     last.high == null ||
     last.low == null
@@ -88,9 +62,7 @@ async function fetchSymbolData(category, symbol) {
 
   const rangeInPercentage = (movement / last.close) * 100;
 
-  if (
-    rangeInPercentage >= CATEGORIES[category].threshold
-  ) {
+  if (rangeInPercentage >= CATEGORIES[category].threshold) {
     return null;
   }
 
@@ -105,9 +77,13 @@ async function fetchSymbolData(category, symbol) {
   };
 }
 
-async function main() {
+async function generateMarketData() {
   const symbolsByCategory = readSymbols();
-  const results = createEmptyResults();
+
+  const results = Object.fromEntries(
+    Object.keys(CATEGORIES).map((category) => [category, []])
+  );
+
   const errors = [];
 
   for (const [category, symbols] of Object.entries(symbolsByCategory)) {
@@ -130,7 +106,7 @@ async function main() {
     }
   }
 
-  const output = {
+  return {
     generated_at: new Date().toISOString(),
     use_body: USE_BODY,
     categories: Object.fromEntries(
@@ -146,21 +122,21 @@ async function main() {
     ),
     errors,
   };
-
-  mkdirSync(OUTPUT_DIR, {
-    recursive: true,
-  });
-
-  writeFileSync(
-    OUTPUT_FILE,
-    JSON.stringify(output, null, 2),
-    "utf8"
-  );
-
-  console.log(`JSON written to ${OUTPUT_FILE}`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+app.get("/api/ranges", async (_request, response) => {
+  try {
+    const data = await generateMarketData();
+
+    response.setHeader("Cache-Control", "no-store, max-age=0");
+    response.json(data);
+  } catch (error) {
+    response.status(500).json({
+      error: error instanceof Error
+        ? error.message
+        : String(error),
+    });
+  }
 });
+
+export default app;
