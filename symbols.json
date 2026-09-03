@@ -1,0 +1,25 @@
+{
+  "stocks": [
+    "AAPL",
+    "MSFT",
+    "NVDA"
+  ],
+  "forex": [
+    "EURUSD=X",
+    "GBPUSD=X",
+    "USDJPY=X"
+  ],
+  "indices": [
+    "^GSPC",
+    "^DJI",
+    "^IXIC"
+  ],
+  "raw-materials": [
+    "GC=F",
+    "CL=F"
+  ],
+  "crypto": [
+    "BTC-USD",
+    "ETH-USD"
+  ]
+}
