@@ -19,7 +19,6 @@ const yf = new YahooFinance({
 const PORT = process.env.PORT || 3000;
 const SYMBOLS_FILE = join(__dirname, "../src/symbols.json");
 const STATIC_DIR = join(__dirname, "../src");
-const USE_BODY = true;
 
 const CATEGORIES = {
   forex: {
@@ -44,8 +43,23 @@ const CATEGORIES = {
   },
 };
 
-const round = (number, decimals = 3) =>
-  Number(number.toFixed(decimals));
+const round = (number, decimals = 3) => {
+  if (number == null || !Number.isFinite(number)) {
+    return null;
+  }
+
+  return Number(number.toFixed(decimals));
+};
+
+function formatPercentage(value) {
+  if (value == null || !Number.isFinite(value)) {
+    return null;
+  }
+
+  const sign = value > 0 ? "+" : "";
+
+  return `${sign}${value.toFixed(2)}%`;
+}
 
 function readSymbols() {
   const fileContent = readFileSync(SYMBOLS_FILE, "utf8");
@@ -62,37 +76,46 @@ function readSymbols() {
 }
 
 async function fetchSymbolData(category, symbol, label) {
-  // get historycal data
-  const { quotes = [] } = await yf.chart(symbol, {
-    period1: new Date(Date.now() - 3 * 864e5),
-    interval: "1d",
-  });
+  const quote = await yf.quote(symbol);
 
-  // get the last day
-  const last = quotes.at(-1);
+  const changePercent = quote.regularMarketChangePercent;
+  const price = quote.regularMarketPrice;
+  const previousClose = quote.regularMarketPreviousClose;
 
   if (
-    !last ||
-    last.close == null ||
-    last.open == null ||
-    last.high == null ||
-    last.low == null
+    changePercent == null ||
+    !Number.isFinite(changePercent) ||
+    price == null ||
+    !Number.isFinite(price)
   ) {
     return null;
   }
 
-  const movement = USE_BODY
-    ? Math.abs(last.close - last.open)
-    : last.high - last.low;
+  const absoluteChangePercent = Math.abs(changePercent);
+  const threshold = CATEGORIES[category].threshold;
 
-  const rangeInPercentage = (movement / 2) * 100;
-
-  if (rangeInPercentage >= CATEGORIES[category].threshold) return null;
+  // Keeps only instruments whose movement is BELOW the category threshold.
+  // Change >= to <= if you instead want to show large movements only.
+  if (absoluteChangePercent >= threshold) {
+    return null;
+  }
 
   return {
     symbol,
     label: label || symbol,
-    range_in_percentage: rangeInPercentage,
+
+    price: round(price),
+    previous_close: round(previousClose),
+    change: round(quote.regularMarketChange),
+
+    // Numeric value, useful for sorting/filtering/charting.
+    change_percentage: round(changePercent, 3),
+
+    // Directly usable in the UI: "+0.12%" / "-0.03%".
+    formatted_change_percentage: formatPercentage(changePercent),
+
+    currency: quote.currency || null,
+    market_state: quote.marketState || null,
   };
 }
 
@@ -146,11 +169,17 @@ async function generateMarketData() {
         });
       }
     }
+
+    results[category].sort(
+      (a, b) =>
+        Math.abs(b.change_percentage) -
+        Math.abs(a.change_percentage)
+    );
   }
 
   return {
     generated_at: new Date().toISOString(),
-    use_body: USE_BODY,
+    movement_reference: "regularMarketPreviousClose",
     categories: Object.fromEntries(
       Object.entries(CATEGORIES).map(([category, config]) => [
         category,
@@ -191,15 +220,7 @@ app.get("/api/ranges", async (_request, response) => {
 
 app.use(express.static(STATIC_DIR));
 
-/**
- * when the script is run locally, the path refers to the file itself.  
- * When it's run on Vercel's Node runtime instead, it refers to Vercel's own generated handler (a launcher/bootstrap file), not this api/index.js file.  
- * For this reason we check the path of the currently executed file to verify if it's a local run or a Vercel one.   
- * In case it's local, the file is run as a server, while when it's on Vercel, it only behaves as a module.
- * 
- * process.argv[1] obtains the file path that the run command put as an argument (node <filename>, filename is the index 1 of the arguments array in the command)
- */
-const filePath = process.argv[1]
+const filePath = process.argv[1];
 
 const isMain =
   Boolean(filePath) &&

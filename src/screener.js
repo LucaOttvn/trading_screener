@@ -1,9 +1,8 @@
-const DATA_URL = "/api/ranges";
-
-const updatedElement = document.querySelector("#updated");
-const statusElement = document.querySelector("#status");
 const categoriesElement = document.querySelector("#categories");
 const errorsElement = document.querySelector("#errors");
+const statusElement = document.querySelector("#status");
+const updatedElement = document.querySelector("#updated");
+const refreshButton = document.querySelector("#refresh-button");
 
 function escapeHtml(value) {
   return String(value)
@@ -14,53 +13,104 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function formatPercentage(value) {
-  return Number(value).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+function movementClass(changePercentage) {
+  if (changePercentage > 0) {
+    return "is-positive";
+  }
+
+  if (changePercentage < 0) {
+    return "is-negative";
+  }
+
+  return "is-neutral";
 }
 
-function renderSymbol(item) {
-  return `
-    <article class="symbol-row">
-      <span class="symbol-name">
-        ${escapeHtml(item.label || item.symbol)}
-      </span>
+function formatDate(dateString) {
+  if (!dateString) {
+    return "Last update unavailable";
+  }
 
-      <span class="symbol-range">
-        ${formatPercentage(item.range_in_percentage)}%
-      </span>
-    </article>
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Last update unavailable";
+  }
+
+  return `Updated ${new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  }).format(date)}`;
+}
+
+function renderSymbolRow(instrument) {
+  const movementStyle = movementClass(
+    instrument.change_percentage
+  );
+
+  return `
+    <tr>
+      <td>
+        <span class="instrument-label">
+          ${escapeHtml(instrument.label)}
+        </span>
+
+        <span class="instrument-symbol">
+          ${escapeHtml(instrument.symbol)}
+        </span>
+      </td>
+
+      <td>
+        <span class="movement ${movementStyle}">
+          ${escapeHtml(
+            instrument.formatted_change_percentage || "—"
+          )}
+        </span>
+      </td>
+    </tr>
   `;
 }
 
-function renderCategory(categoryKey, category) {
-  const symbols = Array.isArray(category.symbols)
-    ? category.symbols
-    : [];
+function renderCategory(category) {
+  const { label, threshold, count, symbols } = category;
 
-  const label = category.label || categoryKey;
-  const threshold = category.threshold;
+  const content =
+    symbols.length === 0
+      ? `
+        <p class="empty">
+          No instruments currently match this category’s threshold.
+        </p>
+      `
+      : `
+        <table class="market-table">
+
+          <tbody>
+            ${symbols.map(renderSymbolRow).join("")}
+          </tbody>
+        </table>
+      `;
 
   return `
     <section class="category">
       <header class="category-header">
         <div>
-          <h2>${escapeHtml(label)}</h2>
+          <h2 class="category-title">
+            ${escapeHtml(label)}
+          </h2>
+
           <span class="category-threshold">
-            Range below ${formatPercentage(threshold)}%
+            Showing movements below ${escapeHtml(threshold)}%
           </span>
         </div>
 
-        <span class="category-count">${symbols.length}</span>
+        <span
+          class="category-count"
+          title="${escapeHtml(count)} matching instruments"
+        >
+          ${escapeHtml(count)}
+        </span>
       </header>
 
-      ${
-        symbols.length
-          ? `<div class="symbol-list">${symbols.map(renderSymbol).join("")}</div>`
-          : '<p class="empty">No symbols found.</p>'
-      }
+      ${content}
     </section>
   `;
 }
@@ -74,12 +124,16 @@ function renderErrors(errors) {
   errorsElement.innerHTML = `
     <section class="errors">
       <h2>Some symbols could not be loaded</h2>
+
       <ul>
         ${errors
           .map(
             (error) => `
               <li>
-                ${escapeHtml(error.label || error.symbol)}:
+                <strong>
+                  ${escapeHtml(error.label || error.symbol)}
+                </strong>
+                (${escapeHtml(error.symbol)}):
                 ${escapeHtml(error.message)}
               </li>
             `
@@ -90,33 +144,64 @@ function renderErrors(errors) {
   `;
 }
 
-async function loadData() {
+function setLoadingState(isLoading) {
+  refreshButton.disabled = isLoading;
+
+  refreshButton.textContent = isLoading
+    ? "Refreshing..."
+    : "Refresh";
+}
+
+async function loadMarketData() {
+  setLoadingState(true);
+
+  statusElement.classList.remove("is-error");
+  statusElement.textContent = "Loading market data...";
+
   try {
-    const response = await fetch(DATA_URL, {
+    const response = await fetch("/api/ranges", {
       cache: "no-store",
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(
+        `The server returned HTTP ${response.status}.`
+      );
     }
 
     const data = await response.json();
 
-    updatedElement.textContent = data.generated_at
-      ? `Updated: ${new Date(data.generated_at).toLocaleString()}`
-      : "Market data";
+    const categories = Object.values(data.categories || {});
 
-    categoriesElement.innerHTML = Object.entries(data.categories)
-      .map(([categoryKey, category]) => renderCategory(categoryKey, category))
+    categoriesElement.innerHTML = categories
+      .map(renderCategory)
       .join("");
 
+    updatedElement.textContent = formatDate(data.generated_at);
+
+    statusElement.textContent =
+      "Daily movement compared with the previous regular-market close.";
+
     renderErrors(data.errors);
-    statusElement.remove();
   } catch (error) {
-    statusElement.textContent = `Could not load market data: ${error.message}`;
-    statusElement.style.color = "#9f1239";
-    statusElement.style.background = "#fff1f2";
+    const message =
+      error instanceof Error
+        ? error.message
+        : "An unknown error occurred.";
+
+    categoriesElement.innerHTML = "";
+    errorsElement.innerHTML = "";
+
+    updatedElement.textContent = "Data could not be updated.";
+
+    statusElement.classList.add("is-error");
+    statusElement.textContent =
+      `Unable to load market data: ${message}`;
+  } finally {
+    setLoadingState(false);
   }
 }
 
-loadData();
+refreshButton.addEventListener("click", loadMarketData);
+
+loadMarketData();

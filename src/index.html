@@ -2,19 +2,36 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Market ranges</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Market movements</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
 
   <body>
     <main>
       <header class="page-header">
-        <h1>Market ranges</h1>
-        <p id="updated">Loading data...</p>
+        <div>
+          <p class="eyebrow">Yahoo Finance screener</p>
+          <h1>Market movements</h1>
+          <p id="updated">Loading data...</p>
+        </div>
+
+        <button id="refresh-button" type="button">
+          Refresh
+        </button>
       </header>
 
-      <p id="status">Loading market data...</p>
+      <section
+        id="status"
+        class="status"
+        aria-live="polite"
+      >
+        Loading market data...
+      </section>
+
       <div id="categories"></div>
       <div id="errors"></div>
     </main>
