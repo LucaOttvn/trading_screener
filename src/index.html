@@ -24,6 +24,29 @@
         </button>
       </header>
 
+      <section class="settings">
+        <div>
+          <h2>Thresholds</h2>
+          <p>
+            Show instruments moving less than the selected daily percentage.
+          </p>
+        </div>
+
+        <form id="threshold-form" class="threshold-form">
+          <div id="threshold-inputs" class="threshold-inputs"></div>
+
+          <div class="threshold-actions">
+            <button id="reset-button" type="button" class="secondary-button">
+              Reset defaults
+            </button>
+
+            <button type="submit">
+              Apply thresholds
+            </button>
+          </div>
+        </form>
+      </section>
+
       <section
         id="status"
         class="status"
