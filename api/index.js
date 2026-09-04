@@ -2,7 +2,7 @@ import express from "express";
 import YahooFinance from "yahoo-finance2";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -11,12 +11,14 @@ const app = express();
 
 const yf = new YahooFinance({
   validation: {
-    logErrors: false,
-    logOptionsErrors: false,
+    logErrors: true,
+    logOptionsErrors: true,
   },
 });
 
+const PORT = process.env.PORT || 3000;
 const SYMBOLS_FILE = join(__dirname, "../src/symbols.json");
+const STATIC_DIR = join(__dirname, "../src");
 const USE_BODY = false;
 
 const CATEGORIES = {
@@ -56,11 +58,13 @@ function readSymbols() {
 }
 
 async function fetchSymbolData(category, symbol, label) {
+  // get historycal data
   const { quotes = [] } = await yf.chart(symbol, {
-    period1: new Date(Date.now() - 65 * 864e5),
+    period1: new Date(Date.now() - 3 * 864e5),
     interval: "1d",
   });
 
+  // get the last day
   const last = quotes.at(-1);
 
   if (
@@ -182,5 +186,27 @@ app.get("/api/ranges", async (_request, response) => {
     });
   }
 });
+
+app.use(express.static(STATIC_DIR));
+
+/**
+ * when the script is run locally, the path refers to the file itself.  
+ * When it's run on Vercel's Node runtime instead, it refers to Vercel's own generated handler (a launcher/bootstrap file), not this api/index.js file.  
+ * For this reason we check the path of the currently executed file to verify if it's a local run or a Vercel one.   
+ * In case it's local, the file is run as a server, while when it's on Vercel, it only behaves as a module.
+ * 
+ * process.argv[1] obtains the file path that the run command put as an argument (node <filename>, filename is the index 1 of the arguments array in the command)
+ */
+const filePath = process.argv[1]
+
+const isMain =
+  Boolean(filePath) &&
+  fileURLToPath(import.meta.url) === resolve(filePath);
+
+if (isMain) {
+  app.listen(PORT, () => {
+    console.log(`[screener] → http://localhost:${PORT}`);
+  });
+}
 
 export default app;
