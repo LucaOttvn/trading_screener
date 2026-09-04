@@ -11,20 +11,24 @@ const app = express();
 
 const yf = new YahooFinance({
   validation: {
-    logErrors: true,
-    logOptionsErrors: true,
+    logErrors: false,
+    logOptionsErrors: false,
   },
 });
 
 const PORT = process.env.PORT || 3000;
 const SYMBOLS_FILE = join(__dirname, "../src/symbols.json");
 const STATIC_DIR = join(__dirname, "../src");
-const USE_BODY = false;
+const USE_BODY = true;
 
 const CATEGORIES = {
   forex: {
     label: "Forex",
     threshold: 0.05,
+  },
+  stocks: {
+    label: "Stocks",
+    threshold: 2,
   },
   indices: {
     label: "Indices",
@@ -81,16 +85,14 @@ async function fetchSymbolData(category, symbol, label) {
     ? Math.abs(last.close - last.open)
     : last.high - last.low;
 
-  const rangeInPercentage = (movement / last.close) * 100;
+  const rangeInPercentage = (movement / 2) * 100;
 
-  if (rangeInPercentage >= CATEGORIES[category].threshold) {
-    return null;
-  }
+  if (rangeInPercentage >= CATEGORIES[category].threshold) return null;
 
   return {
     symbol,
     label: label || symbol,
-    range_in_percentage: round(rangeInPercentage),
+    range_in_percentage: rangeInPercentage,
   };
 }
 
